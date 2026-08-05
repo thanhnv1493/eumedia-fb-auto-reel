@@ -16,7 +16,7 @@ const BACKUP_DATA_FILE = path.join(DATA_DIRECTORY, 'store.last-good.json');
 const PUBLIC_DIR = path.join(ROOT, 'public');
 const DISTRIBUTION_ROOT = path.resolve(ROOT, '..', '..');
 const MEDIA_EXTENSIONS = new Set(['.mp4', '.mov', '.m4v', '.avi', '.webm', '.jpg', '.jpeg', '.png']);
-const RELEASE_VERSION = '2026.08.06.1';
+const RELEASE_VERSION = '2026.08.06.2';
 const GITHUB_UPDATE_REPOSITORY = 'thanhnv1493/eumedia-fb-auto-reel';
 const NETWORK_MODES = new Set(['standalone', 'hub', 'worker']);
 
@@ -558,14 +558,18 @@ function githubRawBaseUrl(config) {
 
 async function githubUpdateManifest(config) {
   const baseUrl = githubRawBaseUrl(config);
-  const content = await bufferRequest(`${baseUrl}/update-manifest.json`, {
+  // GitHub CDN can keep the previous branch file briefly after a release.
+  // A unique query makes the updater read the manifest matching this check,
+  // rather than combining an old manifest with newer source files.
+  const cacheKey = `v=${Date.now()}`;
+  const content = await bufferRequest(`${baseUrl}/update-manifest.json?${cacheKey}`, {
     headers: { 'User-Agent': 'Eumedia-FB-auto-reel-updater', Accept: 'application/json' },
     timeout: 20_000
   });
   let manifest;
   try { manifest = JSON.parse(content.toString('utf8')); } catch (_) { throw new Error('Tệp cập nhật trên GitHub không đúng định dạng'); }
   if (!manifest || !Array.isArray(manifest.files) || !manifest.version) throw new Error('Gói cập nhật GitHub thiếu danh sách tệp');
-  return { baseUrl, manifest };
+  return { baseUrl, manifest, cacheKey: `v=${encodeURIComponent(String(manifest.version))}` };
 }
 
 function changedUpdateFiles(manifest) {
@@ -583,12 +587,12 @@ async function checkGitHubUpdate(store) {
 }
 
 async function applyUpdateFromGitHub(store) {
-  const { baseUrl, manifest } = await githubUpdateManifest(store.updates);
+  const { baseUrl, manifest, cacheKey } = await githubUpdateManifest(store.updates);
   const changed = changedUpdateFiles(manifest);
   for (const item of changed) {
     const remotePath = String(item.remotePath || item.path).replace(/\\/g, '/');
     if (!remotePath || remotePath.includes('..')) throw new Error(`Tệp cập nhật ${item.path} có đường dẫn GitHub không hợp lệ`);
-    const content = await bufferRequest(`${baseUrl}/${remotePath.split('/').map(encodeURIComponent).join('/')}`, {
+    const content = await bufferRequest(`${baseUrl}/${remotePath.split('/').map(encodeURIComponent).join('/')}?${cacheKey}`, {
       headers: { 'User-Agent': 'Eumedia-FB-auto-reel-updater' }, timeout: 45_000
     });
     const hash = createHash('sha256').update(content).digest('hex');

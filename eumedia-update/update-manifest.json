@@ -1,0 +1,72 @@
+{
+  "version": "2026.08.05.3",
+  "generatedAt": "2026-08-05T15:45:47.131Z",
+  "files": [
+    {
+      "path": "B-extension/background.js",
+      "remotePath": "B-extension__background.js",
+      "size": 45219,
+      "sha256": "6d7cb461872e77247125626bedf56e5c88a20475306ff9c8e7aec8d441f2dec1"
+    },
+    {
+      "path": "B-extension/facebook-content.js",
+      "remotePath": "B-extension__facebook-content.js",
+      "size": 776,
+      "sha256": "c3581e523458fe01ca2d5948dda133f368ea1acdcbf14d13448874af8a7ed089"
+    },
+    {
+      "path": "B-extension/manifest.json",
+      "remotePath": "B-extension__manifest.json",
+      "size": 796,
+      "sha256": "93dbff746b0d180c3a669046d5c201f33fa2abb6e9d3452291b0d78da26ac80e"
+    },
+    {
+      "path": "B-extension/popup.html",
+      "remotePath": "B-extension__popup.html",
+      "size": 878,
+      "sha256": "c2caae5d6c8c21f935002b68d4c548100fdb215c8ca67001bee1fa4131533043"
+    },
+    {
+      "path": "B-extension/popup.js",
+      "remotePath": "B-extension__popup.js",
+      "size": 4123,
+      "sha256": "5e5279a890a7361c092c9b16662585cec8b1c8dfe856494d035639b36f301ea1"
+    },
+    {
+      "path": "desktop-main.js",
+      "remotePath": "desktop-main.js",
+      "size": 520,
+      "sha256": "8dff3518881fd0ab33b67db23a9c4d1cba92de54f20d6c5662a8d2ccc7387f59"
+    },
+    {
+      "path": "package.json",
+      "remotePath": "package.json",
+      "size": 703,
+      "sha256": "c81117e74e96174e6b707042c2f66351b345dfce2117d39d5929eb31b8df297b"
+    },
+    {
+      "path": "public/app.js",
+      "remotePath": "public__app.js",
+      "size": 36733,
+      "sha256": "8a3fa26faa2bc9f6c306d5d044fe8ff7e642940b75373f62c3667e579915a93b"
+    },
+    {
+      "path": "public/index.html",
+      "remotePath": "public__index.html",
+      "size": 11056,
+      "sha256": "72c47732ac2a930758555b0648c630de77f88f23d14ea0282699ad6ad0d4b8b8"
+    },
+    {
+      "path": "public/styles.css",
+      "remotePath": "public__styles.css",
+      "size": 12414,
+      "sha256": "d7a3f5f9b04269b7ae81dca9ac89a055c1b84fe71c59dae8f5c9eb3c678ac77c"
+    },
+    {
+      "path": "server.js",
+      "remotePath": "server.js",
+      "size": 99438,
+      "sha256": "0ede9423220df23bd126a4e839fcc6c472834ef4ea197d35e7b3dc961aea6497"
+    }
+  ]
+}

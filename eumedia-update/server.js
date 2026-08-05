@@ -16,7 +16,7 @@ const BACKUP_DATA_FILE = path.join(DATA_DIRECTORY, 'store.last-good.json');
 const PUBLIC_DIR = path.join(ROOT, 'public');
 const DISTRIBUTION_ROOT = path.resolve(ROOT, '..', '..');
 const MEDIA_EXTENSIONS = new Set(['.mp4', '.mov', '.m4v', '.avi', '.webm', '.jpg', '.jpeg', '.png']);
-const RELEASE_VERSION = '2026.08.06.4';
+const RELEASE_VERSION = '2026.08.06.5';
 const GITHUB_UPDATE_REPOSITORY = 'thanhnv1493/eumedia-fb-auto-reel';
 const NETWORK_MODES = new Set(['standalone', 'hub', 'worker']);
 

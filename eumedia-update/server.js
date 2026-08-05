@@ -16,7 +16,7 @@ const BACKUP_DATA_FILE = path.join(DATA_DIRECTORY, 'store.last-good.json');
 const PUBLIC_DIR = path.join(ROOT, 'public');
 const DISTRIBUTION_ROOT = path.resolve(ROOT, '..', '..');
 const MEDIA_EXTENSIONS = new Set(['.mp4', '.mov', '.m4v', '.avi', '.webm', '.jpg', '.jpeg', '.png']);
-const RELEASE_VERSION = '2026.08.06.3';
+const RELEASE_VERSION = '2026.08.06.4';
 const GITHUB_UPDATE_REPOSITORY = 'thanhnv1493/eumedia-fb-auto-reel';
 const NETWORK_MODES = new Set(['standalone', 'hub', 'worker']);
 
@@ -550,26 +550,40 @@ function normalizeGitHubSettings(input = {}) {
   return { githubRepo, githubBranch, githubDirectory: 'eumedia-update' };
 }
 
-function githubRawBaseUrl(config) {
+function githubRepositoryApiBaseUrl(config) {
   const updates = normalizeGitHubSettings(config);
   if (!updates.githubRepo) throw new Error('Hãy nhập Repository GitHub trước');
-  return `https://raw.githubusercontent.com/${updates.githubRepo}/${updates.githubBranch}/${updates.githubDirectory}`;
+  return `https://api.github.com/repos/${updates.githubRepo}/contents/${updates.githubDirectory}`;
+}
+
+async function githubRepositoryFile(config, remotePath) {
+  const updates = normalizeGitHubSettings(config);
+  const safePath = String(remotePath || '').replace(/\\/g, '/').replace(/^\/+/, '');
+  if (!safePath || safePath.split('/').some(part => !part || part === '.' || part === '..')) {
+    throw new Error('Duong dan tep cap nhat GitHub khong hop le');
+  }
+  const encodedPath = safePath.split('/').map(encodeURIComponent).join('/');
+  const baseUrl = githubRepositoryApiBaseUrl(updates);
+  const response = await bufferRequest(`${baseUrl}/${encodedPath}?ref=${encodeURIComponent(updates.githubBranch)}`, {
+    headers: { 'User-Agent': 'Eumedia-FB-auto-reel-updater', Accept: 'application/vnd.github+json' },
+    timeout: 45_000
+  });
+  let payload;
+  try { payload = JSON.parse(response.toString('utf8')); } catch (_) { throw new Error(`GitHub tra ve du lieu khong hop le cho ${safePath}`); }
+  if (!payload || payload.type !== 'file' || payload.encoding !== 'base64' || typeof payload.content !== 'string') {
+    throw new Error(`GitHub khong tim thay tep cap nhat ${safePath}`);
+  }
+  return Buffer.from(payload.content.replace(/\s/g, ''), 'base64');
 }
 
 async function githubUpdateManifest(config) {
-  const baseUrl = githubRawBaseUrl(config);
-  // GitHub CDN can keep the previous branch file briefly after a release.
-  // A unique query makes the updater read the manifest matching this check,
-  // rather than combining an old manifest with newer source files.
-  const cacheKey = `v=${Date.now()}`;
-  const content = await bufferRequest(`${baseUrl}/update-manifest.json?${cacheKey}`, {
-    headers: { 'User-Agent': 'Eumedia-FB-auto-reel-updater', Accept: 'application/json' },
-    timeout: 20_000
-  });
+  const updates = normalizeGitHubSettings(config);
+  const baseUrl = githubRepositoryApiBaseUrl(updates);
+  const content = await githubRepositoryFile(updates, 'update-manifest.json');
   let manifest;
   try { manifest = JSON.parse(content.toString('utf8')); } catch (_) { throw new Error('Tệp cập nhật trên GitHub không đúng định dạng'); }
   if (!manifest || !Array.isArray(manifest.files) || !manifest.version) throw new Error('Gói cập nhật GitHub thiếu danh sách tệp');
-  return { baseUrl, manifest, cacheKey: `v=${encodeURIComponent(String(manifest.version))}` };
+  return { baseUrl, manifest, updates };
 }
 
 function changedUpdateFiles(manifest) {
@@ -587,14 +601,12 @@ async function checkGitHubUpdate(store) {
 }
 
 async function applyUpdateFromGitHub(store) {
-  const { baseUrl, manifest, cacheKey } = await githubUpdateManifest(store.updates);
+  const { baseUrl, manifest, updates } = await githubUpdateManifest(store.updates);
   const changed = changedUpdateFiles(manifest);
   for (const item of changed) {
     const remotePath = String(item.remotePath || item.path).replace(/\\/g, '/');
     if (!remotePath || remotePath.includes('..')) throw new Error(`Tệp cập nhật ${item.path} có đường dẫn GitHub không hợp lệ`);
-    const content = await bufferRequest(`${baseUrl}/${remotePath.split('/').map(encodeURIComponent).join('/')}?${cacheKey}`, {
-      headers: { 'User-Agent': 'Eumedia-FB-auto-reel-updater' }, timeout: 45_000
-    });
+    const content = await githubRepositoryFile(updates, remotePath);
     const hash = createHash('sha256').update(content).digest('hex');
     if (hash !== item.sha256) throw new Error(`Tệp ${item.path} tải từ GitHub không đúng mã kiểm tra`);
     atomicWriteFile(updateAbsolutePath(item.path), content);

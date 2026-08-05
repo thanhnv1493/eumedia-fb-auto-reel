@@ -16,7 +16,7 @@ const BACKUP_DATA_FILE = path.join(DATA_DIRECTORY, 'store.last-good.json');
 const PUBLIC_DIR = path.join(ROOT, 'public');
 const DISTRIBUTION_ROOT = path.resolve(ROOT, '..', '..');
 const MEDIA_EXTENSIONS = new Set(['.mp4', '.mov', '.m4v', '.avi', '.webm', '.jpg', '.jpeg', '.png']);
-const RELEASE_VERSION = '2026.08.06.5';
+const RELEASE_VERSION = '2026.08.06.6';
 const GITHUB_UPDATE_REPOSITORY = 'thanhnv1493/eumedia-fb-auto-reel';
 const NETWORK_MODES = new Set(['standalone', 'hub', 'worker']);
 
@@ -1586,9 +1586,13 @@ function updateAbsolutePath(relative) {
     : path.join(ROOT, relative);
 }
 
+const UPDATE_BOOTSTRAP_PATHS = new Set([
+  'public/assets/eu-media-logo.png'
+]);
+
 function validUpdatePath(relative) {
   const normalized = String(relative || '').replace(/\\/g, '/');
-  return updateFilePaths().includes(normalized) ? normalized : '';
+  return updateFilePaths().includes(normalized) || UPDATE_BOOTSTRAP_PATHS.has(normalized) ? normalized : '';
 }
 
 function updateManifest() {

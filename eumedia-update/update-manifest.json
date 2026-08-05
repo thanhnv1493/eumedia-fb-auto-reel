@@ -1,6 +1,6 @@
 {
-  "version": "2026.08.05.3",
-  "generatedAt": "2026-08-05T15:45:47.131Z",
+  "version": "2026.08.06.1",
+  "generatedAt": "2026-08-05T18:14:24.014Z",
   "files": [
     {
       "path": "B-extension/background.js",
@@ -35,8 +35,8 @@
     {
       "path": "desktop-main.js",
       "remotePath": "desktop-main.js",
-      "size": 520,
-      "sha256": "8dff3518881fd0ab33b67db23a9c4d1cba92de54f20d6c5662a8d2ccc7387f59"
+      "size": 610,
+      "sha256": "a51d7a1e2155184bedb9d470cd067d7ce02e42ef1efc373a9a48f0070dc614e4"
     },
     {
       "path": "package.json",
@@ -47,26 +47,32 @@
     {
       "path": "public/app.js",
       "remotePath": "public__app.js",
-      "size": 36733,
-      "sha256": "8a3fa26faa2bc9f6c306d5d044fe8ff7e642940b75373f62c3667e579915a93b"
+      "size": 34133,
+      "sha256": "3d24c4dd36a30917741da88b973b2c9c0af77dc4aea268bb8a157f1c9e832e0d"
+    },
+    {
+      "path": "public/assets/eu-media-logo.png",
+      "remotePath": "public__assets__eu-media-logo.png",
+      "size": 1214028,
+      "sha256": "712cc89de52b09d4530e73509368b1dc925f8aa4134c4330442dde8b796e23f9"
     },
     {
       "path": "public/index.html",
       "remotePath": "public__index.html",
-      "size": 11056,
-      "sha256": "72c47732ac2a930758555b0648c630de77f88f23d14ea0282699ad6ad0d4b8b8"
+      "size": 10093,
+      "sha256": "b25faf5aa3781ca2ef7df827ad9da3bab4df92969885f9ade9240e253e195ab5"
     },
     {
       "path": "public/styles.css",
       "remotePath": "public__styles.css",
-      "size": 12414,
-      "sha256": "d7a3f5f9b04269b7ae81dca9ac89a055c1b84fe71c59dae8f5c9eb3c678ac77c"
+      "size": 12588,
+      "sha256": "4192a3516ba2572072c54d534015a3be7204d261b2449319630788383f6c2863"
     },
     {
       "path": "server.js",
       "remotePath": "server.js",
-      "size": 99438,
-      "sha256": "0ede9423220df23bd126a4e839fcc6c472834ef4ea197d35e7b3dc961aea6497"
+      "size": 99579,
+      "sha256": "e706e770513a5d131be52934543abba3615147ab7638280b1ab05afe6f2b8886"
     }
   ]
 }

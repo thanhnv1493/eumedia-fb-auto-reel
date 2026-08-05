@@ -1,0 +1,32 @@
+{
+  "name": "a-b-posting-control",
+  "version": "0.1.0",
+  "private": true,
+  "main": "desktop-main.js",
+  "scripts": {
+    "start": "node server.js",
+    "desktop": "electron .",
+    "package:win": "electron-builder --win portable",
+    "package:b-agent": "electron-builder --config build-b-agent.json --win portable"
+  },
+  "build": {
+    "appId": "local.a.postingcontrol",
+    "productName": "A Posting Control",
+    "files": [
+      "server.js",
+      "desktop-main.js",
+      "data/**/*",
+      "public/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "portable"
+      ]
+    }
+  },
+  "devDependencies": {
+    "electron": "^28.3.3",
+    "electron-builder": "^26.15.3"
+  }
+}

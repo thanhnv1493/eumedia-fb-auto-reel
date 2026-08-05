@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ÊU Auto</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app">
+      <header class="toolbar">
+        <div class="brand"><h1><img src="assets/eu-media-logo.png" alt="Êu Media"><span>ÊU Auto</span><small id="app-version">v…</small></h1><p id="connection-summary">Đang tải trạng thái…</p><small id="update-notice" class="update-notice" aria-live="polite"></small></div>
+        <div class="toolbar-actions">
+          <button id="toggle-adspower">⚙ AdsPower</button>
+          <button id="toggle-telegram">🤖 Telegram</button>
+          <button id="update-tool">Cập nhật</button>
+          <button id="refresh-all" class="primary">↻ Làm mới tất cả Page</button>
+        </div>
+      </header>
+      <section id="adspower-setup" class="adspower-setup" hidden>
+        <div class="adspower-title"><div><h2>Thiết lập AdsPower</h2><p>Gán thủ công Số Profile cho Page đang chọn. A sẽ tự mở đúng Profile trước lịch 1 phút.</p></div><span id="adspower-status" class="ads-status">Chưa kết nối</span></div>
+        <div class="adspower-grid">
+          <label>Địa chỉ AdsPower Local API<input id="ads-base-url" type="url" placeholder="http://local.adspower.net:50325"></label>
+          <label>API key AdsPower<input id="ads-api-key" type="password" autocomplete="off" placeholder="Dán API key để kết nối"></label>
+          <button id="ads-connect" type="button" class="primary">Lưu & kiểm tra</button>
+        </div>
+        <div class="window-layout">
+          <label class="checkbox-label"><input id="ads-window-layout-enabled" type="checkbox" checked> Tự sắp xếp cửa sổ Profile khi A mở</label>
+          <label>Rộng (px)<input id="ads-window-width" type="number" min="480" max="3840" step="10" value="960"></label>
+          <label>Cao (px)<input id="ads-window-height" type="number" min="360" max="2160" step="10" value="540"></label>
+          <label>Số cột<input id="ads-window-columns" type="number" min="1" max="6" step="1" value="2"></label>
+          <p class="hint">Ví dụ 960 × 540, 2 cột: các Profile sẽ mở theo lưới, không chồng cửa sổ.</p>
+        </div>
+        <div class="adspower-bind">
+          <label>Số Profile AdsPower<input id="ads-profile-number" type="text" inputmode="numeric" autocomplete="off" placeholder="Ví dụ: 3"></label>
+          <button id="ads-bind" type="button">Gán cho Page đang chọn</button>
+          <button id="ads-open" type="button">Mở thử Profile</button>
+          <span id="ads-result" class="action-result"></span>
+        </div>
+      </section>
+      <section id="telegram-setup" class="telegram-setup" hidden>
+        <div class="adspower-title"><div><h2>AI Agent & Telegram</h2><p>AI đọc log và trạng thái Page từ A, phân tích ngắn gọn rồi gửi báo cáo về Telegram.</p></div><span id="telegram-status" class="ads-status">Chưa thiết lập</span></div>
+        <div class="telegram-grid">
+          <label>Telegram Bot Token<input id="telegram-token" type="password" autocomplete="off" placeholder="Dán Bot Token từ BotFather"></label>
+          <label>Chat ID nhận báo cáo<div class="path-picker"><input id="telegram-chat-id" type="text" autocomplete="off" placeholder="Bấm Start cho bot, rồi bấm Lấy Chat ID"><button id="telegram-find-chat" type="button">Lấy Chat ID</button></div></label>
+        </div>
+        <div class="ai-grid"><label>OpenAI API key<input id="ai-api-key" type="password" autocomplete="off" placeholder="Dán OpenAI API key để AI phân tích"></label><label>Model AI<input id="ai-model" type="text" value="gpt-5.6-terra"></label><label class="checkbox-label"><input id="ai-enabled" type="checkbox"> Dùng AI Agent phân tích lỗi trước khi gửi</label></div>
+        <div class="telegram-actions"><label><input id="telegram-enabled" type="checkbox" checked> Tự gửi khi đăng thành công hoặc có lỗi</label><button id="telegram-save" type="button" class="primary">Lưu thiết lập</button><button id="telegram-test" type="button">Gửi thử</button><button id="telegram-summary" type="button">Gửi tổng hợp hôm nay</button><span id="telegram-result" class="action-result"></span></div>
+      </section>
+      <section id="network-setup" class="network-setup" hidden>
+        <div class="adspower-title"><div><h2>Quản lý nhiều máy</h2><p>Mỗi máy Worker tự xử lý AdsPower và Facebook tại chỗ, sau đó gửi trạng thái và lỗi về A Trung tâm qua mạng nội bộ hoặc VPN.</p></div><span id="network-status" class="ads-status">Chạy độc lập</span></div>
+        <div class="network-grid">
+          <label>Vai trò máy<select id="network-mode"><option value="standalone">Chạy độc lập</option><option value="hub">A Trung tâm (Hub)</option><option value="worker">Máy Worker</option></select></label>
+          <label>Tên máy hiển thị<input id="network-machine-name" type="text" maxlength="80" placeholder="Ví dụ: MÁY-01-HÀ-NỘI"></label>
+          <label class="worker-only">Địa chỉ A Trung tâm<input id="network-hub-url" type="url" placeholder="http://192.168.1.10:3000"></label>
+          <label class="pairing-key">Mã ghép nối<input id="network-shared-key" type="text" autocomplete="off" placeholder="Hub tạo mã, Worker dán cùng mã"></label>
+        </div>
+        <div class="network-actions"><button id="network-save" type="button" class="primary">Lưu kết nối</button><button id="network-new-key" type="button">Tạo mã ghép nối mới</button><button id="network-test" type="button">Gửi thử báo cáo</button><button id="network-apply-update" type="button">⬆ Cập nhật từ Hub</button><span id="network-result" class="action-result"></span></div>
+        <section id="hub-monitor" class="hub-monitor" hidden><div class="hub-monitor-heading"><h3>Máy Worker đang quản lý</h3><span id="hub-machine-count"></span></div><ul id="hub-machine-list"></ul></section>
+      </section>
+      <section class="table-wrap">
+        <table>
+          <thead><tr><th>Page / Số Profile</th><th>Trạng thái</th><th>Facebook Page</th><th>Số follow</th><th>Reel đã đăng</th><th>Lịch đăng</th><th>Nguồn đăng</th><th>Log mới nhất</th></tr></thead>
+          <tbody id="bot-rows"></tbody>
+        </table>
+      </section>
+      <section id="details" class="details" hidden>
+        <div class="detail-title"><div><h2 id="bot-title"></h2><p id="bot-state"></p></div><p id="latest-log"></p></div>
+        <div class="detail-grid">
+          <section class="panel"><h3>Nguồn đăng bài</h3><label>Thư mục chứa video và tiêu đề<div class="path-picker"><input id="source-folder" type="text" placeholder="C:\\Users\\TTT\\Desktop\\1"><button id="choose-source-folder" type="button">Chọn thư mục…</button></div></label><label>URL Facebook Page (để trống nếu Profile đang mở đúng Page)<input id="page-url" type="url" placeholder="https://www.facebook.com/ten-page/"></label><div class="source-actions"><button data-command="check_source" type="button">Kiểm tra nguồn</button><p id="source-status" class="hint">Kiểm tra để biết A đã đọc được video, tiêu đề và định dạng hay chưa.</p></div></section>
+          <section class="panel schedule-panel"><h3>Lịch đăng</h3><label>Số video mỗi ngày<input id="posts-per-day" type="number" min="1" max="50"></label><div class="quick-time-picker"><div class="picker-heading"><span>Giờ đã chọn</span><button id="clear-times" type="button" class="link-button">Xóa tất cả</button></div><div id="selected-time-chips" class="selected-time-chips" aria-live="polite"></div><div class="custom-time-row"><label for="custom-hour">Giờ<select id="custom-hour" aria-label="Chọn giờ"></select></label><label for="custom-minute">Phút<select id="custom-minute" aria-label="Chọn phút"></select></label><button id="add-custom-time" type="button">+ Thêm</button></div><p class="hint">Chọn Giờ, Phút rồi bấm “Thêm”. Bấm dấu × trên giờ để bỏ.</p></div><input id="schedule-times" type="hidden"><label><input id="repeat-daily" type="checkbox" checked> Lặp lại mỗi ngày</label></section>
+          <section class="panel"><h3>Thông tin Page</h3><dl><div><dt>Người theo dõi</dt><dd id="followers"></dd></div><div><dt>Reel đã đăng</dt><dd id="published-posts"></dd></div><div><dt>Video sắp đăng</dt><dd><button id="toggle-upcoming" type="button" class="stat-toggle">Xem danh sách</button></dd></div><div><dt>Bài đăng gần nhất</dt><dd id="last-published-at"></dd></div><div><dt>Cập nhật gần nhất</dt><dd id="page-updated"></dd></div></dl></section>
+        </div>
+        <section id="upcoming-list-panel" class="panel upcoming-list-panel" hidden><div class="upcoming-list-heading"><h3>Video sắp đăng</h3><button id="hide-upcoming" type="button">Thu gọn</button></div><p class="hint">Thứ tự theo nguồn; thời gian được ghép theo lịch đăng hiện tại.</p><ul id="upcoming-list" class="upcoming-list"></ul></section>
+        <section class="panel progress-panel"><h3>Tiến trình thao tác</h3><ul id="progress-log" class="progress-log"></ul></section>
+        <div class="actions"><button id="save-config" class="primary">Lưu nguồn & lịch</button><button data-command="post_next" class="primary post-now">⚡ Đăng ngay</button><button data-command="refresh_page">↻ Làm mới Page này</button><button data-command="pause" class="danger">Tạm dừng Page</button><button id="delete-bot" class="danger">Xóa Page này</button><span id="action-result" class="action-result"></span></div>
+      </section>
+    </main>
+    <aside id="app-clock" class="app-clock" aria-live="polite"></aside>
+    <script src="app.js"></script>
+  </body>
+</html>

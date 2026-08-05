@@ -1,5 +1,5 @@
 {
-  "name": "a-b-posting-control",
+  "name": "eu-auto",
   "version": "0.1.0",
   "private": true,
   "main": "desktop-main.js",
@@ -7,11 +7,12 @@
     "start": "node server.js",
     "desktop": "electron .",
     "package:win": "electron-builder --win portable",
-    "package:b-agent": "electron-builder --config build-b-agent.json --win portable"
+    "package:b-agent": "electron-builder --config build-b-agent.json --win portable",
+    "icon:win": "node ../../tao-icon-eu.js"
   },
   "build": {
     "appId": "local.a.postingcontrol",
-    "productName": "A Posting Control",
+    "productName": "ÊU Auto",
     "files": [
       "server.js",
       "desktop-main.js",
@@ -20,6 +21,7 @@
       "package.json"
     ],
     "win": {
+      "icon": "public/assets/eu-media-logo.ico",
       "target": [
         "portable"
       ]

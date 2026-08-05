@@ -16,7 +16,7 @@ const BACKUP_DATA_FILE = path.join(DATA_DIRECTORY, 'store.last-good.json');
 const PUBLIC_DIR = path.join(ROOT, 'public');
 const DISTRIBUTION_ROOT = path.resolve(ROOT, '..', '..');
 const MEDIA_EXTENSIONS = new Set(['.mp4', '.mov', '.m4v', '.avi', '.webm', '.jpg', '.jpeg', '.png']);
-const RELEASE_VERSION = '2026.08.06.6';
+const RELEASE_VERSION = '2026.08.06.7';
 const GITHUB_UPDATE_REPOSITORY = 'thanhnv1493/eumedia-fb-auto-reel';
 const NETWORK_MODES = new Set(['standalone', 'hub', 'worker']);
 
@@ -1587,7 +1587,8 @@ function updateAbsolutePath(relative) {
 }
 
 const UPDATE_BOOTSTRAP_PATHS = new Set([
-  'public/assets/eu-media-logo.png'
+  'public/assets/eu-media-logo.png',
+  'public/assets/eu-media-logo.ico'
 ]);
 
 function validUpdatePath(relative) {
@@ -2064,8 +2065,27 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+async function restoreBrandAssets() {
+  const config = { githubRepo: GITHUB_UPDATE_REPOSITORY, githubBranch: 'main' };
+  const assets = [
+    ['public/assets/eu-media-logo.png', 'public__assets__eu-media-logo.png'],
+    ['public/assets/eu-media-logo.ico', 'public__assets__eu-media-logo.ico']
+  ];
+  for (const [localPath, remotePath] of assets) {
+    const target = updateAbsolutePath(localPath);
+    if (fs.existsSync(target)) continue;
+    try {
+      const content = await githubRepositoryFile(config, remotePath);
+      atomicWriteFile(target, content);
+    } catch (_) {
+      // The page header also has a remote-image fallback; do not block Tool startup.
+    }
+  }
+}
+
 const PORT = Number(process.env.PORT || 3000);
 server.listen(PORT, () => console.log(`A đang chạy tại http://localhost:${PORT}`));
+const startupAssetsReady = restoreBrandAssets();
 setTimeout(() => { runDailySchedules().catch(() => {}); }, 2_000);
 setInterval(() => { runDailySchedules().catch(() => {}); }, 15_000);
 
@@ -2083,3 +2103,5 @@ armMinuteBoundarySchedule();
 // Worker heartbeat keeps the Hub dashboard accurate even when no Page is
 // posting or changing state.
 setInterval(() => { sendHubReport().catch(() => {}); }, 30_000);
+
+module.exports = { startupAssetsReady };

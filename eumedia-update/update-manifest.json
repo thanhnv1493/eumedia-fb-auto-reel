@@ -1,6 +1,6 @@
 {
-  "version": "2026.08.06.6",
-  "generatedAt": "2026-08-05T18:33:30.499Z",
+  "version": "2026.08.06.7",
+  "generatedAt": "2026-08-05T18:47:32.104Z",
   "files": [
     {
       "path": "B-extension/background.js",
@@ -35,20 +35,26 @@
     {
       "path": "desktop-main.js",
       "remotePath": "desktop-main.js",
-      "size": 610,
-      "sha256": "a51d7a1e2155184bedb9d470cd067d7ce02e42ef1efc373a9a48f0070dc614e4"
+      "size": 927,
+      "sha256": "cdded24a207ffa0322164de965260719a29ad10fd352c8bec0d55515dfdd2d48"
     },
     {
       "path": "package.json",
       "remotePath": "package.json",
-      "size": 703,
-      "sha256": "c81117e74e96174e6b707042c2f66351b345dfce2117d39d5929eb31b8df297b"
+      "size": 776,
+      "sha256": "39f8d40a4650bb21670d1a22bfa6ccbee6c23386c83425b7c8023829f6de9bb8"
     },
     {
       "path": "public/app.js",
       "remotePath": "public__app.js",
       "size": 34133,
       "sha256": "3d24c4dd36a30917741da88b973b2c9c0af77dc4aea268bb8a157f1c9e832e0d"
+    },
+    {
+      "path": "public/assets/eu-media-logo.ico",
+      "remotePath": "public__assets__eu-media-logo.ico",
+      "size": 1214050,
+      "sha256": "4d1d593ff4886d2c84a06b73a5b8cdff192b8b1e04855af91ff1e15556b39458"
     },
     {
       "path": "public/assets/eu-media-logo.png",
@@ -71,8 +77,8 @@
     {
       "path": "server.js",
       "remotePath": "server.js",
-      "size": 100685,
-      "sha256": "9c322760239e4afb14f2f06a24753849c2093d4dabd9a98602d0a322c4e1eec0"
+      "size": 101489,
+      "sha256": "de13bd90b5f36132f260c0f4bfd55813cc2da345a18e2b674a4ce3c769bf3609"
     }
   ]
 }

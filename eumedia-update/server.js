@@ -16,7 +16,7 @@ const BACKUP_DATA_FILE = path.join(DATA_DIRECTORY, 'store.last-good.json');
 const PUBLIC_DIR = path.join(ROOT, 'public');
 const DISTRIBUTION_ROOT = path.resolve(ROOT, '..', '..');
 const MEDIA_EXTENSIONS = new Set(['.mp4', '.mov', '.m4v', '.avi', '.webm', '.jpg', '.jpeg', '.png']);
-const RELEASE_VERSION = '2026.08.06.8';
+const RELEASE_VERSION = '2026.08.06.9';
 const GITHUB_UPDATE_REPOSITORY = 'thanhnv1493/eumedia-fb-auto-reel';
 const NETWORK_MODES = new Set(['standalone', 'hub', 'worker']);
 
@@ -575,10 +575,23 @@ async function githubRepositoryFile(config, remotePath) {
   });
   let payload;
   try { payload = JSON.parse(response.toString('utf8')); } catch (_) { throw new Error(`GitHub tra ve du lieu khong hop le cho ${safePath}`); }
-  if (!payload || payload.type !== 'file' || payload.encoding !== 'base64' || typeof payload.content !== 'string') {
+  if (!payload || payload.type !== 'file') {
     throw new Error(`GitHub khong tim thay tep cap nhat ${safePath}`);
   }
-  return Buffer.from(payload.content.replace(/\s/g, ''), 'base64');
+  if (payload.encoding === 'base64' && typeof payload.content === 'string' && payload.content.trim()) {
+    return Buffer.from(payload.content.replace(/\s/g, ''), 'base64');
+  }
+
+  // GitHub Contents API omits inline data for files above roughly 1 MB.
+  // Its raw download URL remains available, so use it as a fallback instead
+  // of allowing a logo to stop an application update.
+  if (typeof payload.download_url === 'string' && /^https:\/\/raw\.githubusercontent\.com\//i.test(payload.download_url)) {
+    return bufferRequest(`${payload.download_url}${payload.download_url.includes('?') ? '&' : '?'}v=${Date.now()}`, {
+      headers: { 'User-Agent': 'Eumedia-FB-auto-reel-updater' },
+      timeout: 45_000
+    });
+  }
+  throw new Error(`GitHub khong doc duoc noi dung tep cap nhat ${safePath}`);
 }
 
 async function githubUpdateManifest(config) {

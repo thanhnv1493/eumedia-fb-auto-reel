@@ -1,6 +1,6 @@
 {
-  "version": "2026.08.06.8",
-  "generatedAt": "2026-08-06T10:59:39.597Z",
+  "version": "2026.08.06.9",
+  "generatedAt": "2026-08-06T11:10:15.365Z",
   "files": [
     {
       "path": "B-extension/background.js",
@@ -47,20 +47,8 @@
     {
       "path": "public/app.js",
       "remotePath": "public__app.js",
-      "size": 35245,
-      "sha256": "acf7b5068fbf8151e5f7d7990285dfd7f034ccf5935d51f700eb2481ca1fc494"
-    },
-    {
-      "path": "public/assets/eu-media-logo.ico",
-      "remotePath": "public__assets__eu-media-logo.ico",
-      "size": 1214050,
-      "sha256": "4d1d593ff4886d2c84a06b73a5b8cdff192b8b1e04855af91ff1e15556b39458"
-    },
-    {
-      "path": "public/assets/eu-media-logo.png",
-      "remotePath": "public__assets__eu-media-logo.png",
-      "size": 1214028,
-      "sha256": "712cc89de52b09d4530e73509368b1dc925f8aa4134c4330442dde8b796e23f9"
+      "size": 35638,
+      "sha256": "d6e1f64988c93f2d7f6fbb4d2293bb4c336be29b11449d95c10e0357b00cc0ae"
     },
     {
       "path": "public/index.html",
@@ -77,8 +65,8 @@
     {
       "path": "server.js",
       "remotePath": "server.js",
-      "size": 105632,
-      "sha256": "b70b2f69328cc1e6c12e52382dfb186e41ae1feae66a578d9628f815234f00ab"
+      "size": 106295,
+      "sha256": "b5754c8813b2251fdcd94d0845fa1103a97b662e263cdf375c60620ddc97abe4"
     }
   ]
 }

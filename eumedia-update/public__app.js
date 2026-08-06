@@ -750,5 +750,15 @@ $('#refresh-all').addEventListener('click', async () => {
   await reload();
 });
 
-reload().catch(error => $('#connection-summary').textContent = `Không kết nối được A: ${error.message}`);
+function showDashboardConnectionError(error) {
+  const summary = $('#connection-summary');
+  if (summary) summary.textContent = `Không kết nối được A: ${error.message || 'Lỗi không xác định'}`;
+  const notice = $('#update-notice');
+  if (notice) {
+    notice.textContent = 'Tool chưa tải được dữ liệu. Bấm “Cập nhật” ở góc trên, sau đó đóng và mở lại Tool.';
+    notice.className = 'update-notice error';
+  }
+}
+
+reload().catch(showDashboardConnectionError);
 setInterval(() => reload().catch(() => {}), 3000);

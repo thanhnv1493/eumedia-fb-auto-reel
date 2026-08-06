@@ -1,4 +1,6 @@
 :root { font-family: Arial, sans-serif; color: #202124; background: #f5f7fa; }
+.hub-ai-summary { margin: 10px 0 0; padding: 9px 10px; border-left: 3px solid #7048e8; border-radius: 4px; background: #f7f4ff; color: #3f3567; line-height: 1.45; white-space: pre-line; }
+.network-actions .action-result { white-space: pre-line; }
 .window-layout { display: grid; grid-template-columns: 1.65fr repeat(3, minmax(90px, 0.55fr)); gap: 9px; align-items: end; margin-top: 10px; padding: 10px; border: 1px solid #dce4ed; border-radius: 7px; background: #fff; }.window-layout label { margin: 0; }.window-layout input[type="number"] { display: block; box-sizing: border-box; width: 100%; margin-top: 5px; padding: 8px; border: 1px solid #c7cfd9; border-radius: 4px; font: inherit; }.window-layout .hint { grid-column: 1 / -1; margin: 0; }
 * { box-sizing: border-box; }
 body { margin: 0; padding: 24px; }

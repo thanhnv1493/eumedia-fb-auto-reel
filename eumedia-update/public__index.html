@@ -12,7 +12,8 @@
         <div class="brand"><h1><img src="assets/eu-media-logo.png" alt="Êu Media" onerror="this.onerror=null;this.src='https://raw.githubusercontent.com/thanhnv1493/eumedia-fb-auto-reel/main/eumedia-update/public__assets__eu-media-logo.png';"><span>ÊU Auto</span><small id="app-version">v…</small></h1><p id="connection-summary">Đang tải trạng thái…</p><small id="update-notice" class="update-notice" aria-live="polite"></small></div>
         <div class="toolbar-actions">
           <button id="toggle-adspower">⚙ AdsPower</button>
-          <button id="toggle-telegram">🤖 Telegram</button>
+          <button id="toggle-network">🖥 Máy</button>
+          <button id="toggle-telegram">🤖 AI & Telegram</button>
           <button id="update-tool">Cập nhật</button>
           <button id="refresh-all" class="primary">↻ Làm mới tất cả Page</button>
         </div>
@@ -39,12 +40,12 @@
         </div>
       </section>
       <section id="telegram-setup" class="telegram-setup" hidden>
-        <div class="adspower-title"><div><h2>AI Agent & Telegram</h2><p>AI đọc log và trạng thái Page từ A, phân tích ngắn gọn rồi gửi báo cáo về Telegram.</p></div><span id="telegram-status" class="ads-status">Chưa thiết lập</span></div>
+        <div class="adspower-title"><div><h2>AI Agent & Telegram</h2><p>Chỉ nhập OpenAI API key trên máy Hub. AI đọc lỗi từ toàn bộ máy Worker, phân tích ngắn gọn rồi gửi báo cáo về Telegram.</p></div><span id="telegram-status" class="ads-status">Chưa thiết lập</span></div>
         <div class="telegram-grid">
           <label>Telegram Bot Token<input id="telegram-token" type="password" autocomplete="off" placeholder="Dán Bot Token từ BotFather"></label>
           <label>Chat ID nhận báo cáo<div class="path-picker"><input id="telegram-chat-id" type="text" autocomplete="off" placeholder="Bấm Start cho bot, rồi bấm Lấy Chat ID"><button id="telegram-find-chat" type="button">Lấy Chat ID</button></div></label>
         </div>
-        <div class="ai-grid"><label>OpenAI API key<input id="ai-api-key" type="password" autocomplete="off" placeholder="Dán OpenAI API key để AI phân tích"></label><label>Model AI<input id="ai-model" type="text" value="gpt-5.6-terra"></label><label class="checkbox-label"><input id="ai-enabled" type="checkbox"> Dùng AI Agent phân tích lỗi trước khi gửi</label></div>
+        <div class="ai-grid"><label>OpenAI API key (chỉ máy Hub)<input id="ai-api-key" type="password" autocomplete="off" placeholder="Dán OpenAI API key để AI phân tích"></label><label>Model AI<input id="ai-model" type="text" value="gpt-5.6-sol"></label><label class="checkbox-label"><input id="ai-enabled" type="checkbox"> Dùng AI Agent phân tích lỗi chung trước khi gửi</label></div>
         <div class="telegram-actions"><label><input id="telegram-enabled" type="checkbox" checked> Tự gửi khi đăng thành công hoặc có lỗi</label><button id="telegram-save" type="button" class="primary">Lưu thiết lập</button><button id="telegram-test" type="button">Gửi thử</button><button id="telegram-summary" type="button">Gửi tổng hợp hôm nay</button><span id="telegram-result" class="action-result"></span></div>
       </section>
       <section id="network-setup" class="network-setup" hidden>
@@ -55,8 +56,8 @@
           <label class="worker-only">Địa chỉ A Trung tâm<input id="network-hub-url" type="url" placeholder="http://192.168.1.10:3000"></label>
           <label class="pairing-key">Mã ghép nối<input id="network-shared-key" type="text" autocomplete="off" placeholder="Hub tạo mã, Worker dán cùng mã"></label>
         </div>
-        <div class="network-actions"><button id="network-save" type="button" class="primary">Lưu kết nối</button><button id="network-new-key" type="button">Tạo mã ghép nối mới</button><button id="network-test" type="button">Gửi thử báo cáo</button><button id="network-apply-update" type="button">⬆ Cập nhật từ Hub</button><span id="network-result" class="action-result"></span></div>
-        <section id="hub-monitor" class="hub-monitor" hidden><div class="hub-monitor-heading"><h3>Máy Worker đang quản lý</h3><span id="hub-machine-count"></span></div><ul id="hub-machine-list"></ul></section>
+        <div class="network-actions"><button id="network-save" type="button" class="primary">Lưu kết nối</button><button id="network-new-key" type="button">Tạo mã ghép nối mới</button><button id="network-test" type="button">Gửi thử báo cáo</button><button id="network-ai-summary" type="button">🤖 AI đọc lỗi chung</button><button id="network-apply-update" type="button">⬆ Cập nhật từ Hub</button><span id="network-result" class="action-result"></span></div>
+        <section id="hub-monitor" class="hub-monitor" hidden><div class="hub-monitor-heading"><h3>Máy Worker đang quản lý</h3><span id="hub-machine-count"></span></div><p id="hub-ai-summary" class="hub-ai-summary" hidden></p><ul id="hub-machine-list"></ul></section>
       </section>
       <section class="table-wrap">
         <table>

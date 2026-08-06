@@ -1,6 +1,6 @@
 {
-  "version": "2026.08.06.7",
-  "generatedAt": "2026-08-05T18:47:32.104Z",
+  "version": "2026.08.06.8",
+  "generatedAt": "2026-08-06T10:59:39.597Z",
   "files": [
     {
       "path": "B-extension/background.js",
@@ -47,8 +47,8 @@
     {
       "path": "public/app.js",
       "remotePath": "public__app.js",
-      "size": 34133,
-      "sha256": "3d24c4dd36a30917741da88b973b2c9c0af77dc4aea268bb8a157f1c9e832e0d"
+      "size": 35245,
+      "sha256": "acf7b5068fbf8151e5f7d7990285dfd7f034ccf5935d51f700eb2481ca1fc494"
     },
     {
       "path": "public/assets/eu-media-logo.ico",
@@ -65,20 +65,20 @@
     {
       "path": "public/index.html",
       "remotePath": "public__index.html",
-      "size": 10254,
-      "sha256": "280986d00e44e61246fa9b027d755fb84460f98f4b0c195f46c17dfce2792532"
+      "size": 10519,
+      "sha256": "3edfb759f854eb840eb9862d6250b18cd0dd8b6911e5c995531b1275f61f1608"
     },
     {
       "path": "public/styles.css",
       "remotePath": "public__styles.css",
-      "size": 12588,
-      "sha256": "4192a3516ba2572072c54d534015a3be7204d261b2449319630788383f6c2863"
+      "size": 12835,
+      "sha256": "1a6afabc16e7e5c91751cd2a2dfaed8e5cb8c6df0473e0fbcc721fa5bc7b556d"
     },
     {
       "path": "server.js",
       "remotePath": "server.js",
-      "size": 101489,
-      "sha256": "de13bd90b5f36132f260c0f4bfd55813cc2da345a18e2b674a4ce3c769bf3609"
+      "size": 105632,
+      "sha256": "b70b2f69328cc1e6c12e52382dfb186e41ae1feae66a578d9628f815234f00ab"
     }
   ]
 }

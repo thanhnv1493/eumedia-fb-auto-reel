@@ -147,7 +147,7 @@ function renderNotificationSetup() {
     $('#telegram-chat-id').value = '';
     $('#telegram-enabled').checked = Boolean(telegram.enabled);
     $('#ai-api-key').value = '';
-    $('#ai-model').value = ai.model || 'gpt-5.6-terra';
+    $('#ai-model').value = ai.model || 'gpt-5.6-sol';
     $('#ai-enabled').checked = Boolean(ai.enabled);
   }
   $('#telegram-token').placeholder = telegram.configured ? 'Bot Token đã lưu — để trống nếu không đổi' : 'Dán Bot Token từ BotFather';
@@ -169,6 +169,10 @@ function renderHubMonitor() {
   const machines = state?.hubMachines || [];
   panel.hidden = network.mode !== 'hub';
   if (network.mode !== 'hub') return;
+  const aiSummary = state?.hubAiAnalysis || {};
+  const aiSummaryElement = $('#hub-ai-summary');
+  aiSummaryElement.hidden = !aiSummary.text;
+  aiSummaryElement.textContent = aiSummary.text ? `AI đọc lỗi chung${aiSummary.at ? ` · ${time(aiSummary.at)}` : ''}:\n${aiSummary.text}` : '';
   $('#hub-machine-count').textContent = `${machines.length} máy`;
   const list = $('#hub-machine-list');
   list.innerHTML = '';
@@ -223,6 +227,7 @@ function renderNetworkSetup() {
   status.className = `ads-status${network.mode !== 'standalone' && network.paired ? ' ready' : ''}`;
   $('#network-new-key').hidden = network.mode !== 'hub';
   $('#network-test').hidden = network.mode === 'standalone';
+  $('#network-ai-summary').hidden = network.mode !== 'hub';
   $('#network-apply-update').hidden = network.mode !== 'worker';
   $('#network-shared-key').placeholder = network.paired ? 'Mã đã lưu — để trống nếu không đổi' : 'Hub tạo mã, Worker dán cùng mã';
   renderHubMonitor();
@@ -376,6 +381,12 @@ $('#toggle-telegram').addEventListener('click', () => {
   if (!panel.hidden) renderNotificationSetup();
 });
 
+$('#toggle-network').addEventListener('click', () => {
+  const panel = $('#network-setup');
+  panel.hidden = !panel.hidden;
+  if (!panel.hidden) renderNetworkSetup();
+});
+
 function showNetworkResult(message, isError = false) {
   const target = $('#network-result');
   target.textContent = message;
@@ -465,6 +476,22 @@ $('#network-test').addEventListener('click', async () => {
     await reload();
   } catch (error) {
     showNetworkResult(error.message, true);
+  }
+});
+
+$('#network-ai-summary').addEventListener('click', async () => {
+  const button = $('#network-ai-summary');
+  try {
+    button.disabled = true;
+    showNetworkResult('AI đang đọc log chung của các máy…');
+    const result = await request('/api/network/ai-summary', { method: 'POST', body: '{}' });
+    state.hubAiAnalysis = { text: result.analysis, at: result.at };
+    showNetworkResult(`AI đã đọc lỗi chung:\n${result.analysis}`);
+    renderHubMonitor();
+  } catch (error) {
+    showNetworkResult(error.message, true);
+  } finally {
+    button.disabled = false;
   }
 });
 

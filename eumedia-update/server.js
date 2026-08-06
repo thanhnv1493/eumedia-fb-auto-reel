@@ -16,7 +16,7 @@ const BACKUP_DATA_FILE = path.join(DATA_DIRECTORY, 'store.last-good.json');
 const PUBLIC_DIR = path.join(ROOT, 'public');
 const DISTRIBUTION_ROOT = path.resolve(ROOT, '..', '..');
 const MEDIA_EXTENSIONS = new Set(['.mp4', '.mov', '.m4v', '.avi', '.webm', '.jpg', '.jpeg', '.png']);
-const RELEASE_VERSION = '2026.08.06.7';
+const RELEASE_VERSION = '2026.08.06.8';
 const GITHUB_UPDATE_REPOSITORY = 'thanhnv1493/eumedia-fb-auto-reel';
 const NETWORK_MODES = new Set(['standalone', 'hub', 'worker']);
 
@@ -109,7 +109,7 @@ function readStore() {
   store.adsPower.windowLayout = normalizeAdsPowerWindowLayout(store.adsPower.windowLayout);
   store.notifications = {
     telegram: { botToken: '', chatId: '', enabled: false, ...((store.notifications || {}).telegram || {}) },
-    ai: { apiKey: '', model: 'gpt-5.6-terra', enabled: false, ...((store.notifications || {}).ai || {}) }
+    ai: { apiKey: '', model: 'gpt-5.6-sol', enabled: false, ...((store.notifications || {}).ai || {}) }
   };
   store.network = {
     mode: 'standalone',
@@ -137,6 +137,7 @@ function readStore() {
   store.network.machineName = String(store.network.machineName || os.hostname() || 'Máy chưa đặt tên').slice(0, 80);
   store.network.hubUrl = String(store.network.hubUrl || '').trim().replace(/\/$/, '');
   store.hubMachines = (store.hubMachines && typeof store.hubMachines === 'object') ? store.hubMachines : {};
+  store.hubAiAnalysis = (store.hubAiAnalysis && typeof store.hubAiAnalysis === 'object') ? store.hubAiAnalysis : { text: '', at: '' };
   if (migratePageIdentities(store)) storeChanged = true;
   store.deletedBots = [...new Set((Array.isArray(store.deletedBots) ? store.deletedBots : [])
     .map(canonicalBotId)
@@ -187,7 +188,7 @@ function notificationsPublic(config) {
     ai: {
       configured: Boolean(config?.ai?.apiKey),
       enabled: Boolean(config?.ai?.enabled),
-      model: config?.ai?.model || 'gpt-5.6-terra'
+      model: config?.ai?.model || 'gpt-5.6-sol'
     }
   };
 }
@@ -236,6 +237,10 @@ function publicStore(store) {
     pages: machine.pages || [],
     errors: machine.errors || []
   })).sort((first, second) => String(first.machineName || '').localeCompare(String(second.machineName || '')));
+  safe.hubAiAnalysis = {
+    text: String(store.hubAiAnalysis?.text || ''),
+    at: String(store.hubAiAnalysis?.at || '')
+  };
   return safe;
 }
 
@@ -734,7 +739,7 @@ async function askAiAgent(store, context) {
   const response = await httpsJsonRequest('https://api.openai.com/v1/responses', {
     headers: { Authorization: `Bearer ${config.apiKey}` },
     payload: {
-      model: config.model || 'gpt-5.6-terra',
+      model: config.model || 'gpt-5.6-sol',
       reasoning: { effort: 'low' },
       text: { verbosity: 'low' },
       instructions: 'Bạn là trợ lý giám sát đăng Facebook Page. Chỉ dùng dữ liệu được đưa vào. Viết tiếng Việt, tối đa 4 gạch đầu dòng: tình trạng, nguyên nhân có thể, việc cần làm tiếp theo. Không nói rằng bạn đã tự sửa lỗi hay thực hiện hành động.',
@@ -743,6 +748,56 @@ async function askAiAgent(store, context) {
     }
   });
   return outputText(response);
+}
+
+function workerErrorContext(machine, error = {}) {
+  const page = (machine.pages || []).find(item => item.id === error.botId) || {};
+  return [
+    `Máy: ${machine.machineName || machine.machineId || 'Chưa rõ'}`,
+    `Page: ${page.id || error.botId || 'Chưa rõ'} · ${page.name || 'Chưa đọc tên Page'}`,
+    `Profile AdsPower: ${page.profileNumber || 'Chưa gán'}`,
+    `Trạng thái Page: ${page.status || 'chưa rõ'}`,
+    `Lỗi: ${error.message || 'Không có nội dung lỗi'}`,
+    `Thời gian: ${error.at || new Date().toISOString()}`
+  ].join('\n');
+}
+
+function hubAiContext(store) {
+  const machines = Object.values(store.hubMachines || {});
+  const lines = [
+    `Hub đang nhận ${machines.length} máy Worker.`,
+    `Thời điểm: ${new Date().toISOString()}`
+  ];
+  if (!machines.length) lines.push('Chưa có máy Worker nào gửi báo cáo.');
+  machines.forEach(machine => {
+    const pages = machine.pages || [];
+    const online = pages.filter(page => page.status === 'online').length;
+    lines.push(`\nMáy ${machine.machineName || machine.machineId}: ${online}/${pages.length} Page online.`);
+    (machine.errors || []).slice(0, 3).forEach(error => lines.push(workerErrorContext(machine, error)));
+  });
+  return lines.join('\n');
+}
+
+async function analyzeHubErrors(store) {
+  if (store.network?.mode !== 'hub') throw new Error('Hãy mở chức năng này tại A Trung tâm (Hub).');
+  if (!store.notifications?.ai?.enabled || !store.notifications?.ai?.apiKey) {
+    throw new Error('Hãy nhập OpenAI API key và bật AI Agent trên máy Hub trước.');
+  }
+  const analysis = await askAiAgent(store, `Hãy đọc báo cáo chung nhiều máy của Tool ÊU Auto. Chỉ nêu các máy/Page đang cần chú ý, lỗi nào ưu tiên xử lý trước và cách xử lý ngắn gọn.\n\n${hubAiContext(store)}`);
+  if (!analysis) throw new Error('AI chưa trả về nhận định. Hãy kiểm tra API key và model.');
+  return analysis;
+}
+
+async function notifyWorkerError(store, machine, error) {
+  if (!store.notifications?.telegram?.enabled) return { skipped: true };
+  let message = `<b>⚠ Lỗi từ ${escapeTelegramHtml(machine.machineName || machine.machineId || 'Worker')}</b>\n${escapeTelegramHtml(workerErrorContext(machine, error))}`;
+  try {
+    const analysis = await askAiAgent(store, `Phân tích một lỗi mới từ hệ thống nhiều máy.\n\n${workerErrorContext(machine, error)}`);
+    if (analysis) message += `\n\n<b>🤖 AI Agent nhận định</b>\n${escapeTelegramHtml(analysis)}`;
+  } catch (aiError) {
+    message += `\n\nAI chưa phân tích được: ${escapeTelegramHtml(aiError.message || '')}`;
+  }
+  return sendTelegram(store, message);
 }
 
 function errorAdvice(error) {
@@ -773,6 +828,7 @@ function formatPostReport(bot, outcome) {
 }
 
 async function notifyPostOutcome(store, bot, outcome) {
+  if (store.network?.mode === 'worker') return { skipped: true };
   if (!store.notifications?.telegram?.enabled) return { skipped: true };
   let message = formatPostReport(bot, outcome);
   try {
@@ -795,9 +851,13 @@ async function notifyDailySummary(store, { force = false } = {}) {
   const today = bangkokDate();
   const successes = store.bots.reduce((count, bot) => count + Object.values(bot.confirmedPosts || {}).filter(at => bangkokDate(new Date(at)) === today).length, 0);
   const errors = (store.logs || []).filter(log => log.level === 'error' && bangkokDate(new Date(log.at)) === today);
-  let message = [`<b>📊 Báo cáo A — ${today}</b>`, `✅ Bài thành công hôm nay: <b>${successes}</b>`, `❌ Lỗi hôm nay: <b>${errors.length}</b>`, '', '<b>Page đang quản lý</b>'];
+  const workerMachines = Object.values(store.hubMachines || {});
+  const workerErrors = workerMachines.flatMap(machine => (machine.errors || []).map(error => ({ ...error, machine })));
+  const allErrors = [...errors, ...workerErrors];
+  let message = [`<b>📊 Báo cáo A — ${today}</b>`, `✅ Bài thành công hôm nay: <b>${successes}</b>`, `❌ Lỗi hôm nay: <b>${allErrors.length}</b>`, '', '<b>Page đang quản lý</b>'];
   message.push(...store.bots.map(bot => `• ${escapeTelegramHtml(bot.id)} · ${escapeTelegramHtml(bot.page?.name || 'Chưa gán Page')}: ${Number(bot.page?.publishedPosts) || 0} Reel`));
-  if (errors.length) message.push('', '<b>Lỗi mới nhất</b>', ...errors.slice(0, 5).map(log => `• ${escapeTelegramHtml(log.message)}`));
+  if (workerMachines.length) message.push('', '<b>Máy Worker</b>', ...workerMachines.map(machine => `• ${escapeTelegramHtml(machine.machineName || machine.machineId)}: ${(machine.pages || []).filter(page => page.status === 'online').length}/${(machine.pages || []).length} Page online`));
+  if (allErrors.length) message.push('', '<b>Lỗi mới nhất</b>', ...allErrors.slice(0, 5).map(log => log.machine ? `• ${escapeTelegramHtml(log.machine.machineName || log.machine.machineId)} · ${escapeTelegramHtml(log.message || 'Không rõ lỗi')}` : `• ${escapeTelegramHtml(log.message)}`));
   message = message.join('\n');
   try {
     const ai = await askAiAgent(store, `Hãy phân tích báo cáo từ tool A sau và đề xuất ưu tiên xử lý:\n${message.replace(/<[^>]+>/g, '')}`);
@@ -1719,6 +1779,16 @@ const server = http.createServer(async (req, res) => {
       if (store.network.mode === 'hub') return json(res, 200, { ok: true, message: `Hub đang nhận ${Object.keys(store.hubMachines || {}).length} máy Worker` });
       return json(res, 400, { error: 'Hãy chọn A Trung tâm hoặc Máy Worker trước' });
     }
+    if (req.method === 'POST' && url.pathname === '/api/network/ai-summary') {
+      const store = readStore();
+      const analysis = await analyzeHubErrors(store);
+      store.hubAiAnalysis = { text: analysis, at: new Date().toISOString() };
+      writeStore(store);
+      if (store.notifications?.telegram?.enabled) {
+        sendTelegram(store, `<b>🤖 AI đọc lỗi chung</b>\n${escapeTelegramHtml(analysis)}`).catch(() => {});
+      }
+      return json(res, 200, { ok: true, analysis, at: store.hubAiAnalysis.at });
+    }
     if (req.method === 'POST' && url.pathname === '/api/network/report') {
       const store = readStore();
       if (!hubRequestAllowed(store, req)) return json(res, 401, { error: 'Mã ghép nối không đúng hoặc máy này chưa là Hub' });
@@ -1738,9 +1808,8 @@ const server = http.createServer(async (req, res) => {
       };
       writeStore(store);
       const newestError = errors[0];
-      if (newestError?.at && newestError.at !== previous.errors?.[0]?.at) {
-        sendTelegram(store, `<b>⚠ Lỗi từ ${escapeTelegramHtml(store.hubMachines[machineId].machineName)}</b>\n${escapeTelegramHtml(newestError.botId || '')}: ${escapeTelegramHtml(newestError.message || 'Không rõ lỗi')}`).catch(() => {});
-      }
+      const isNewWorkerError = newestError?.at && newestError.at !== previous.errors?.[0]?.at;
+      if (isNewWorkerError) notifyWorkerError(store, store.hubMachines[machineId], newestError).catch(() => {});
       return json(res, 200, { ok: true, hubVersion: RELEASE_VERSION });
     }
     if (req.method === 'GET' && url.pathname === '/api/network/update/manifest') {
@@ -1783,7 +1852,7 @@ const server = http.createServer(async (req, res) => {
       const ai = {
         ...store.notifications.ai,
         ...(aiApiKey ? { apiKey: aiApiKey } : {}),
-        model: String(payload.aiModel || store.notifications.ai.model || 'gpt-5.6-terra').trim(),
+        model: String(payload.aiModel || store.notifications.ai.model || 'gpt-5.6-sol').trim(),
         enabled: Boolean(payload.aiEnabled)
       };
       if (telegram.enabled && (!telegram.botToken || !telegram.chatId)) return json(res, 400, { error: 'Hãy nhập Telegram Bot Token và Chat ID trước khi bật gửi tự động' });

@@ -4,6 +4,7 @@ const net = require('net');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const zlib = require('zlib');
 const { randomUUID, createHash, randomBytes } = require('crypto');
 
 const ROOT = __dirname;
@@ -16,7 +17,7 @@ const BACKUP_DATA_FILE = path.join(DATA_DIRECTORY, 'store.last-good.json');
 const PUBLIC_DIR = path.join(ROOT, 'public');
 const DISTRIBUTION_ROOT = path.resolve(ROOT, '..', '..');
 const MEDIA_EXTENSIONS = new Set(['.mp4', '.mov', '.m4v', '.avi', '.webm', '.jpg', '.jpeg', '.png']);
-const RELEASE_VERSION = '2026.08.06.9';
+const RELEASE_VERSION = '2026.08.07.1';
 const GITHUB_UPDATE_REPOSITORY = 'thanhnv1493/eumedia-fb-auto-reel';
 const NETWORK_MODES = new Set(['standalone', 'hub', 'worker']);
 
@@ -816,8 +817,8 @@ async function notifyWorkerError(store, machine, error) {
 function errorAdvice(error) {
   const message = String(error || '').toLocaleLowerCase('vi-VN');
   if (/captcha|xác minh/.test(message)) return 'Mở Profile để tự xử lý xác minh/CAPTCHA rồi đăng lại.';
-  if (/mô tả|caption|tiêu đề|hashtag/.test(message)) return 'Kiểm tra titles.txt/title.txt và ô Mô tả thước phim.';
-  if (/nguồn|video|thư mục|file/.test(message)) return 'Kiểm tra đường dẫn nguồn, video và file titles.txt/title.txt.';
+  if (/mô tả|caption|tiêu đề|hashtag/.test(message)) return 'Kiểm tra file Excel/titles.txt và ô Mô tả thước phim.';
+  if (/nguồn|video|thư mục|file/.test(message)) return 'Kiểm tra đường dẫn nguồn, video và file Excel/titles.txt.';
   if (/profile|adspower|kết nối/.test(message)) return 'Kiểm tra Số Profile AdsPower và kết nối của Page.';
   return 'Mở Tiến trình thao tác trong A để xem bước lỗi gần nhất rồi thử lại.';
 }
@@ -1206,6 +1207,149 @@ function csvRows(text) {
   return lines.map(line => Object.fromEntries(headers.map((header, index) => [header, parse(line)[index] || ''])));
 }
 
+function decodeXmlText(value) {
+  return String(value || '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&quot;/gi, '"')
+    .replace(/&apos;/gi, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&amp;/gi, '&')
+    .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCodePoint(parseInt(code, 16)))
+    .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(parseInt(code, 10)));
+}
+
+// A compact XLSX reader built from Node's standard libraries. It supports the
+// simple two-column Excel exports used for source-video/title matching, without
+// requiring Excel or an extra package on every computer running ÊU Auto.
+function xlsxZipEntries(file) {
+  const archive = fs.readFileSync(file);
+  const minimumEnd = Math.max(0, archive.length - 65_557);
+  let end = -1;
+  for (let offset = archive.length - 22; offset >= minimumEnd; offset -= 1) {
+    if (archive.readUInt32LE(offset) === 0x06054b50) { end = offset; break; }
+  }
+  if (end < 0) throw new Error('File Excel không đúng định dạng XLSX');
+  const entryCount = archive.readUInt16LE(end + 10);
+  let cursor = archive.readUInt32LE(end + 16);
+  const entries = new Map();
+  for (let index = 0; index < entryCount; index += 1) {
+    if (archive.readUInt32LE(cursor) !== 0x02014b50) throw new Error('File Excel bị hỏng danh sách dữ liệu');
+    const flags = archive.readUInt16LE(cursor + 8);
+    const compression = archive.readUInt16LE(cursor + 10);
+    const compressedSize = archive.readUInt32LE(cursor + 20);
+    const nameLength = archive.readUInt16LE(cursor + 28);
+    const extraLength = archive.readUInt16LE(cursor + 30);
+    const commentLength = archive.readUInt16LE(cursor + 32);
+    const localOffset = archive.readUInt32LE(cursor + 42);
+    const name = archive.subarray(cursor + 46, cursor + 46 + nameLength).toString(flags & 0x0800 ? 'utf8' : 'utf8');
+    if (archive.readUInt32LE(localOffset) !== 0x04034b50) throw new Error('File Excel có dữ liệu nén không hợp lệ');
+    const localNameLength = archive.readUInt16LE(localOffset + 26);
+    const localExtraLength = archive.readUInt16LE(localOffset + 28);
+    const start = localOffset + 30 + localNameLength + localExtraLength;
+    const compressed = archive.subarray(start, start + compressedSize);
+    let content;
+    if (compression === 0) content = compressed;
+    else if (compression === 8) content = zlib.inflateRawSync(compressed);
+    else throw new Error('File Excel sử dụng kiểu nén chưa được hỗ trợ');
+    entries.set(name, content.toString('utf8'));
+    cursor += 46 + nameLength + extraLength + commentLength;
+  }
+  return entries;
+}
+
+function xlsxColumnIndex(reference) {
+  const letters = String(reference || '').match(/[A-Z]+/i)?.[0] || 'A';
+  return [...letters.toUpperCase()].reduce((total, letter) => total * 26 + letter.charCodeAt(0) - 64, 0) - 1;
+}
+
+function xlsxFirstSheet(entries) {
+  const workbook = entries.get('xl/workbook.xml') || '';
+  const relationships = entries.get('xl/_rels/workbook.xml.rels') || '';
+  const firstSheet = workbook.match(/<sheet\b[^>]*\br:id="([^"]+)"[^>]*>/i)?.[1];
+  const relation = firstSheet
+    ? new RegExp(`<Relationship\\b[^>]*\\bId="${firstSheet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"[^>]*\\bTarget="([^"]+)"[^>]*>`, 'i').exec(relationships)?.[1]
+    : '';
+  if (relation) {
+    const target = relation.replace(/\\/g, '/');
+    const normalized = target.startsWith('/') ? target.replace(/^\/+/, '') : path.posix.normalize(path.posix.join('xl', target));
+    if (entries.has(normalized)) return entries.get(normalized);
+  }
+  const fallback = [...entries.keys()].filter(name => /^xl\/worksheets\/[^/]+\.xml$/i.test(name)).sort()[0];
+  if (!fallback) throw new Error('Không tìm thấy trang dữ liệu trong file Excel');
+  return entries.get(fallback);
+}
+
+function xlsxRows(file) {
+  const entries = xlsxZipEntries(file);
+  const sharedXml = entries.get('xl/sharedStrings.xml') || '';
+  const shared = [...sharedXml.matchAll(/<si\b[^>]*>([\s\S]*?)<\/si>/gi)].map(match => decodeXmlText(match[1]));
+  const sheet = xlsxFirstSheet(entries);
+  const rows = [];
+  for (const rowMatch of sheet.matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>/gi)) {
+    const values = [];
+    for (const cellMatch of rowMatch[1].matchAll(/<c\b([^>]*)>([\s\S]*?)<\/c>/gi)) {
+      const attributes = cellMatch[1];
+      const content = cellMatch[2];
+      const column = xlsxColumnIndex(attributes.match(/\br="([^"]+)"/i)?.[1]);
+      const type = attributes.match(/\bt="([^"]+)"/i)?.[1] || '';
+      const raw = content.match(/<v\b[^>]*>([\s\S]*?)<\/v>/i)?.[1] || '';
+      const inline = content.match(/<is\b[^>]*>([\s\S]*?)<\/is>/i)?.[1] || '';
+      const value = type === 's' ? (shared[Number(raw)] || '') : decodeXmlText(type === 'inlineStr' ? inline : raw);
+      values[column] = String(value || '').trim();
+    }
+    if (values.some(Boolean)) rows.push(values);
+  }
+  return rows;
+}
+
+function sourceLookupKeys(value) {
+  const raw = String(value || '').trim().replace(/\\/g, '/');
+  if (!raw) return [];
+  const basename = raw.split('/').pop() || raw;
+  const stem = basename.replace(/\.[a-z0-9]{2,5}$/i, '');
+  const keys = [raw, basename, stem];
+  const numericId = stem.match(/(\d{6,})$/)?.[1];
+  if (numericId) keys.push(numericId);
+  return [...new Set(keys.map(key => key.trim().toLocaleLowerCase('vi-VN')).filter(Boolean))];
+}
+
+function findExcelTitleBook(folder) {
+  const excelFile = fs.readdirSync(folder, { withFileTypes: true })
+    .filter(item => item.isFile() && /\.(xlsx|xlsm)$/i.test(item.name))
+    .sort((first, second) => first.name.localeCompare(second.name, 'vi'))[0];
+  if (!excelFile) return null;
+  const file = path.join(folder, excelFile.name);
+  const rows = xlsxRows(file);
+  if (!rows.length) throw new Error(`File Excel ${excelFile.name} không có dữ liệu tiêu đề`);
+  const header = rows[0].map(value => String(value || '').toLocaleLowerCase('vi-VN'));
+  const idColumn = header.findIndex(value => /(^|\s)(id|mã|ma|video|file|tệp|tep|tên file|ten file|đường dẫn|duong dan)(\s|$)/i.test(value));
+  const titleColumn = header.findIndex(value => /(title|tiêu đề|tieu de|caption|mô tả|mo ta|hashtag)/i.test(value));
+  const hasHeader = idColumn >= 0 || titleColumn >= 0;
+  const mapping = new Map();
+  const sequence = new Map();
+  rows.slice(hasHeader ? 1 : 0).forEach((row, index) => {
+    const id = String(row[idColumn >= 0 ? idColumn : 0] || '').trim();
+    const fallbackCaption = row.find((value, column) => column !== (idColumn >= 0 ? idColumn : 0) && String(value || '').trim());
+    const caption = String(row[titleColumn >= 0 ? titleColumn : 1] || fallbackCaption || '').trim();
+    if (!id || !caption) return;
+    sourceLookupKeys(id).forEach(key => {
+      if (!mapping.has(key)) {
+        mapping.set(key, caption);
+        sequence.set(key, index);
+      }
+    });
+  });
+  if (!mapping.size) throw new Error(`File Excel ${excelFile.name} chưa có cặp ID và tiêu đề hợp lệ`);
+  const match = mediaPath => {
+    for (const key of sourceLookupKeys(mediaPath)) {
+      if (mapping.has(key)) return { caption: mapping.get(key), sequence: sequence.get(key) ?? Number.MAX_SAFE_INTEGER };
+    }
+    return null;
+  };
+  return { file, fileName: excelFile.name, match };
+}
+
 function readJson(file, fallback = {}) {
   try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch (_) { return fallback; }
 }
@@ -1263,6 +1407,7 @@ function backupCaption(value) {
 
 function scanReelsBackup(folder, bot) {
   const videoFolder = fs.existsSync(path.join(folder, 'video')) ? path.join(folder, 'video') : folder;
+  const excelTitles = findExcelTitleBook(folder);
   const titleFile = ['titles.txt', 'title.txt', 'captions.txt', 'caption.txt']
     .map(name => path.join(folder, name))
     .find(file => fs.existsSync(file));
@@ -1282,12 +1427,15 @@ function scanReelsBackup(folder, bot) {
     const sourceId = name.match(/-\s*(\d+)\s*$/)?.[1] || '';
     const stable = sourceId || createHash('sha1').update(path.relative(folder, mediaPath)).digest('hex').slice(0, 14);
     const postId = `BACKUP-${stable}`;
-    const mappedTitle = titlesById.get(sourceId) || '';
-    const positionalTitle = !downloaded.length ? (titleLines[index] || '') : '';
+    const excelMatch = excelTitles?.match(mediaPath) || null;
+    const mappedTitle = excelMatch?.caption || titlesById.get(sourceId) || '';
+    const positionalTitle = !excelTitles && !downloaded.length ? (titleLines[index] || '') : '';
     const filenameTitle = name.replace(/-\s*\d+\s*$/, '').trim();
     const captionFromTitleFile = Boolean(mappedTitle || positionalTitle);
-    const captionFromFilename = !captionFromTitleFile && Boolean(filenameTitle);
-    const captionSource = mappedTitle || positionalTitle || filenameTitle;
+    // When an Excel book is present, never use a filename as a silent
+    // fallback. A non-matching ID must remain visible for correction.
+    const captionFromFilename = !excelTitles && !captionFromTitleFile && Boolean(filenameTitle);
+    const captionSource = mappedTitle || positionalTitle || (excelTitles ? '' : filenameTitle);
     const caption = backupCaption(captionSource) || postId;
     const status = stored.jobs?.[postId] || {};
     return {
@@ -1305,7 +1453,7 @@ function scanReelsBackup(folder, bot) {
       captionFromTitleFile,
       captionFromFilename,
       captionReady: Boolean(captionSource),
-      titleFile: titleFile ? path.basename(titleFile) : '',
+      titleFile: excelTitles?.fileName || (titleFile ? path.basename(titleFile) : ''),
       error: status.last_error || ''
     };
   });
@@ -1313,7 +1461,7 @@ function scanReelsBackup(folder, bot) {
   return jobs.sort((first, second) => {
     const firstId = first.postId.replace('BACKUP-', '');
     const secondId = second.postId.replace('BACKUP-', '');
-    return (sequenceById.get(firstId) ?? Number.MAX_SAFE_INTEGER) - (sequenceById.get(secondId) ?? Number.MAX_SAFE_INTEGER)
+    return (excelTitles?.match(first.mediaPath)?.sequence ?? sequenceById.get(firstId) ?? Number.MAX_SAFE_INTEGER) - (excelTitles?.match(second.mediaPath)?.sequence ?? sequenceById.get(secondId) ?? Number.MAX_SAFE_INTEGER)
       || first.mediaPath.localeCompare(second.mediaPath, 'vi');
   });
 }
@@ -1358,7 +1506,7 @@ async function selectSourceFolder() {
   const { dialog } = require('electron');
   if (!dialog) throw new Error('A chưa sẵn sàng mở hộp chọn thư mục');
   const result = await dialog.showOpenDialog({
-    title: 'Chọn thư mục chứa video và titles.txt',
+    title: 'Chọn thư mục chứa video và file Excel/titles.txt',
     properties: ['openDirectory']
   });
   return result.canceled ? { canceled: true } : { canceled: false, folder: result.filePaths[0] };
@@ -1369,7 +1517,7 @@ function previewSourceFolder(folder) {
   const titleCount = jobs.filter(job => job.captionReady ?? job.captionFromTitleFile).length;
   const fileTitleCount = jobs.filter(job => job.captionFromTitleFile).length;
   const filenameTitleCount = jobs.filter(job => job.captionFromFilename).length;
-  const titleFile = jobs.find(job => job.titleFile)?.titleFile || 'titles.txt/title.txt';
+  const titleFile = jobs.find(job => job.titleFile)?.titleFile || 'file Excel hoặc titles.txt/title.txt';
   const missingTitles = jobs.filter(job => !(job.captionReady ?? job.captionFromTitleFile)).slice(0, 5).map(job => path.basename(job.mediaPath || job.postId));
   return {
     videoCount: jobs.length,
@@ -1403,7 +1551,7 @@ function syncSourceFolder(store, bot, { announce = false } = {}) {
     status: titlesReady ? 'ready' : 'warning',
     detail: titlesReady
       ? `Đã đọc ${jobs.length} video: ${fileTitleCount} tiêu đề từ ${titleFile || 'file tiêu đề'}${filenameTitleCount ? `, ${filenameTitleCount} tiêu đề từ tên file video` : ''}; ${counts.ready || 0} sẵn sàng, ${counts.published || 0} đã đăng`
-      : `Đã đọc ${jobs.length} video nhưng chỉ có ${titleCount}/${jobs.length} tiêu đề trong ${titleFile || 'titles.txt/title.txt'}`,
+      : `Đã đọc ${jobs.length} video nhưng chỉ có ${titleCount}/${jobs.length} tiêu đề trong ${titleFile || 'file Excel hoặc titles.txt/title.txt'}`,
     checkedAt: new Date().toISOString()
   };
   if (changed || announce) addLog(store, bot.id, `A đã đồng bộ ${jobs.length} video từ thư mục nguồn`, 'success');
@@ -2166,10 +2314,7 @@ async function restoreBrandAssets() {
 }
 
 const PORT = Number(process.env.PORT || 3000);
-server.listen(PORT, () => console.log(`A đang chạy tại http://localhost:${PORT}`));
-const startupAssetsReady = restoreBrandAssets();
-setTimeout(() => { runDailySchedules().catch(() => {}); }, 2_000);
-setInterval(() => { runDailySchedules().catch(() => {}); }, 15_000);
+let startupAssetsReady = Promise.resolve();
 
 // The regular 15-second check is useful for retries and source refreshes.
 // This extra pulse lands just after every minute boundary so a staggered batch
@@ -2181,9 +2326,15 @@ function armMinuteBoundarySchedule() {
     armMinuteBoundarySchedule();
   }, delay);
 }
-armMinuteBoundarySchedule();
-// Worker heartbeat keeps the Hub dashboard accurate even when no Page is
-// posting or changing state.
-setInterval(() => { sendHubReport().catch(() => {}); }, 30_000);
+if (process.env.EU_AUTO_TEST !== '1') {
+  server.listen(PORT, () => console.log(`A đang chạy tại http://localhost:${PORT}`));
+  startupAssetsReady = restoreBrandAssets();
+  setTimeout(() => { runDailySchedules().catch(() => {}); }, 2_000);
+  setInterval(() => { runDailySchedules().catch(() => {}); }, 15_000);
+  armMinuteBoundarySchedule();
+  // Worker heartbeat keeps the Hub dashboard accurate even when no Page is
+  // posting or changing state.
+  setInterval(() => { sendHubReport().catch(() => {}); }, 30_000);
+}
 
-module.exports = { startupAssetsReady };
+module.exports = { startupAssetsReady, scanSourceFolder, previewSourceFolder, findExcelTitleBook };
